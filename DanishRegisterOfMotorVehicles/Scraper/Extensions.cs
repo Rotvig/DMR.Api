@@ -1,11 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Newtonsoft.Json;
+﻿using Newtonsoft.Json;
 
-namespace Dmr
+namespace DanishRegisterOfMotorVehicles.Api.Scraper
 {
     public static class RequestExtensions
     {
@@ -13,8 +8,7 @@ namespace Dmr
         {
             var formatting = Formatting.Indented;
             var settings = new JsonSerializerSettings();
-            var json = JsonConvert.SerializeObject(model, formatting, settings);
-            return json;
+            return JsonConvert.SerializeObject(model, formatting, settings);
         }
     }
 }

@@ -1,12 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Net;
 
-
-namespace Dmr
+namespace DanishRegisterOfMotorVehicles.Api.Scraper
 {
     public class WebClient : System.Net.WebClient
     {

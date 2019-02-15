@@ -4,10 +4,8 @@ using System.Linq;
 using System.Text;
 using HtmlAgilityPack;
 
-namespace Dmr
+namespace DanishRegisterOfMotorVehicles.Api.Scraper
 {
-
-
     public class Parser
     {
 

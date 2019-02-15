@@ -1,36 +1,26 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Collections.Specialized;
-using System.Linq;
+using System.IO;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Dmr
+namespace DanishRegisterOfMotorVehicles.Api.Scraper
 {
-    public static class Scraper
+    public class Scraper
     {
-        //const string TOKEN_URL = "https://motorregister.skat.dk/dmr-front/appmanager/skat/dmr?_nfpb=true&_nfpb=true&_pageLabel=vis_koeretoej_side&_nfls=false";
         const string TOKEN_URL = "https://motorregister.skat.dk/dmr-front/dmr.portal?_nfpb=true&_nfpb=true&_pageLabel=vis_koeretoej_side&_nfls=false";
-
-        //const string DATA_URL = "https://motorregister.skat.dk/dmr-front/dmr.portal?_nfpb=true&_windowLabel=kerne_vis_koeretoej&kerne_vis_koeretoej_actionOverride=%2Fdk%2Fskat%2Fdmr%2Ffront%2Fportlets%2Fkoeretoej%2Fnested%2FfremsoegKoeretoej%2Fsearch&_pageLabel=vis_koeretoej_side";
-
-        const string DATA_URL = "https://motorregister.skat.dk/dmr-front/dmr.portal?_nfpb=true&_windowLabel=kerne_vis_koeretoej&kerne_vis_koeretoej_actionOverride=%2Fdk%2Fskat%2Fdmr%2Ffront%2Fportlets%2Fkoeretoej%2Fnested%2FvisKoeretoej%2FselectTab&kerne_vis_koeretoejdmr_tabset_tab=&_pageLabel=vis_koeretoej_side";
-
-
-        ////MotorInfo2 = await client.GetAsync("https://motorregister.skat.dk/dmr-front/dmr.portal?_nfpb=true&_windowLabel=kerne_vis_koeretoej&kerne_vis_koeretoej_actionOverride=%2Fdk%2Fskat%2Fdmr%2Ffront%2Fportlets%2Fkoeretoej%2Fnested%2FvisKoeretoej%2FselectTab&kerne_vis_koeretoejdmr_tabset_tab=1&_pageLabel=vis_koeretoej_side");
-        ////MotorInfo3 = await client.GetAsync("https://motorregister.skat.dk/dmr-front/dmr.portal?_nfpb=true&_windowLabel=kerne_vis_koeretoej&kerne_vis_koeretoej_actionOverride=%2Fdk%2Fskat%2Fdmr%2Ffront%2Fportlets%2Fkoeretoej%2Fnested%2FvisKoeretoej%2FselectTab&kerne_vis_koeretoejdmr_tabset_tab=2&_pageLabel=vis_koeretoej_side");
-        ////MotorInfo5 = await client.GetAsync("https://motorregister.skat.dk/dmr-front/dmr.portal?_nfpb=true&_windowLabel=kerne_vis_koeretoej&kerne_vis_koeretoej_actionOverride=%2Fdk%2Fskat%2Fdmr%2Ffront%2Fportlets%2Fkoeretoej%2Fnested%2FvisKoeretoej%2FselectTab&kerne_vis_koeretoejdmr_tabset_tab=4&_pageLabel=vis_koeretoej_side");
+        const string DATA_URL = "https://motorregister.skat.dk/dmr-front/dmr.portal?_nfpb=true&_windowLabel=kerne_vis_koeretoej&kerne_vis_koeretoej_actionOverride=%2Fdk%2Fskat%2Fdmr%2Ffront%2Fportlets%2Fkoeretoej%2Fnested%2FfremsoegKoeretoej%2Fsearch&_pageLabel=vis_koeretoej_side";
         const string HIDDEN_TOKEN_NAME = "dmrFormToken";
         const string SEARCH_FORM_NAME = "kerne_vis_koeretoej{actionForm.soegeord}";
 
-        private static Dmr.WebClient _webClient = new Dmr.WebClient();
-        private static Parser _parser = new Parser();
-        private static string _token = string.Empty;
+        private  WebClient _webClient = new WebClient();
+        private  Parser _parser = new Parser();
+        private  string _token = string.Empty;
 
-        public static string Token { get { return _token; } }
-        public static bool IsAuthenticated { get { return !string.IsNullOrEmpty(_token); } }
+        public  string Token { get { return _token; } }
+        public  bool IsAuthenticated { get { return !string.IsNullOrEmpty(_token); } }
 
-        private static void Authenticate(string token = "")
+        private  void Authenticate(string token = "")
         {
             if (!string.IsNullOrEmpty(token))
             {
@@ -52,28 +42,41 @@ namespace Dmr
             }
         }
 
-        private static string GetVehicleHtml(string licencePlate)
+        private string GetVehicleHtml(string licencePlate)
         {
-            string result = string.Empty;
             try
             {
                 Authenticate();
+
                 NameValueCollection payload = new NameValueCollection() 
                 { 
-                     { HIDDEN_TOKEN_NAME, _token },  
-                     { SEARCH_FORM_NAME, licencePlate }  
+                     { HIDDEN_TOKEN_NAME, _token },
+                     {"kerne_vis_koeretoejwlw-radio_button_group_key:{actionForm.soegekriterie}", "REGISTRERINGSNUMMER" },
+                     { SEARCH_FORM_NAME, licencePlate },
+                     { "kerne_vis_koeretoejactionOverride:search", "Søg" },
                 };
-                byte[] b = _webClient.UploadValues(DATA_URL, "POST", payload);
-                result = Encoding.UTF8.GetString(b);
+                return Encoding.UTF8.GetString(_webClient.UploadValues(DATA_URL, "POST", payload));
             }
             catch (Exception)
             {
                 throw;
             }
-            return result;
         }
 
-        public static Request LookupVehicle(string licencePlate)
+        private async Task<string> GetSubPageHtml(string url)
+        {
+            try
+            {
+                Stream stream = _webClient.OpenRead(new Uri(@"https://motorregister.skat.dk/dmr-front/dmr.portal?_nfpb=true&_windowLabel=kerne_vis_koeretoej&kerne_vis_koeretoej_actionOverride=%2Fdk%2Fskat%2Fdmr%2Ffront%2Fportlets%2Fkoeretoej%2Fnested%2FvisKoeretoej%2FselectTab&kerne_vis_koeretoejdmr_tabset_tab=1&_pageLabel=vis_koeretoej_side"));
+                return await new StreamReader(stream).ReadToEndAsync();
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+        }
+
+        public  Request LookupVehicle(string licencePlate)
         {
             _parser.LoadHtml(GetVehicleHtml(licencePlate));
             
