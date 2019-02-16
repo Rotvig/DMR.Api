@@ -4,69 +4,71 @@ using System.Linq;
 using System.Text;
 using HtmlAgilityPack;
 
-namespace DanishRegisterOfMotorVehicles.Api.Scraper
+namespace DanishRegisterOfMotorVehicles.Api.Scraping
 {
     public class Parser
     {
+        private const string HIDDEN_TOKEN_NAME = "dmrFormToken";
+        private readonly char[] _replaceWithDash = "/\\ ".ToCharArray();
+        private readonly char[] _replaceWithEmpty = ":;,. ()".ToCharArray();
 
-        const string HIDDEN_TOKEN_NAME = "dmrFormToken";
+        private readonly char[] _trim = "\r\n\t:;,. ".ToCharArray();
 
-        private HtmlDocument _doc = new HtmlDocument();
-       
-        public Parser(string html = "")
+
+        public string GetAuthenticationToken(string html)
         {
-            if(!string.IsNullOrEmpty(html))
-                _doc.LoadHtml(html);
-        }
-
-        public void LoadHtml(string html)
-        {
-            _doc.LoadHtml(html);
-        }
-
-        public string GetAuthenticationToken()
-        {
-            return _doc.DocumentNode
+            var htmlDoc = new HtmlDocument();
+            htmlDoc.LoadHtml(html);
+            return htmlDoc.DocumentNode
                 .SelectSingleNode("//input[@name='" + HIDDEN_TOKEN_NAME + "']")
                 .GetAttributeValue("value", null);
         }
 
-        public List<Entity> GetVehicle()
+        public List<Entity> ParseHtmlDocToVehicle(string html)
         {
-            if (_doc.DocumentNode.InnerText.Contains("Ingen køretøjer fundet"))
+            var htmlDoc = new HtmlDocument();
+            htmlDoc.LoadHtml(html);
+            if (htmlDoc.DocumentNode.InnerText.Contains("Ingen køretøjer fundet"))
                 return null;
 
-            var list = new List<Entity>();
 
-            // sæt rod node: body -> .h-tab-content-inner
-            var root =_doc.DocumentNode.SelectSingleNode("//div[@class='h-tab-content-inner']");
+//            // sæt rod node: body -> .h-tab-content-inner
+//            var root = htmlDoc.DocumentNode.SelectSingleNode("//div[@class='h-tab-content-inner']");
+//
+//            if (root == null)
+//                return null;
+//
+//            // nu har(burde) vi en liste der består af -> h2 #text div[id='id*']...
+//            // de tre første noder er ikke nøvendige, 
+//            // et h tag, en tekst node og et div med en form: h2 #text div
+//            var rows = root.ChildNodes.Where(x => x.Name == "div").ToList();
+//
+//            foreach (var row in rows)
+//            {
+//                list.AddRange(GetFirstRowEntities(row));
+//            }
 
-            if (root == null)
-                return null;
-
-            // nu har(burde) vi en liste der består af -> h2 #text div[id='id*']...
-            // de tre første noder er ikke nøvendige, 
-            // et h tag, en tekst node og et div med en form: h2 #text div
-            var rows = root.ChildNodes.Where(x => x.Name == "div").Skip(1).ToList();
-
-            bool isFirst = true;
-            foreach (var row in rows)
+            var vehicleNodes = htmlDoc.DocumentNode.SelectNodes("//div[@class='notrequired keyvalue singleDouble']");
+            var lineNodes = htmlDoc.DocumentNode.SelectNodes("//div[@class='line']");
+            var entities = new List<Entity>();
+            foreach (var lineNode in lineNodes)
             {
-                IEnumerable<Entity> entities;
-                if (isFirst)
+                try
                 {
-                    isFirst = false;
-                    entities = GetFirstRowEntities(row);
-                    list.AddRange(entities);
+                    entities.Add(new Entity()
+                    {
+                        Label = lineNode.SelectSingleNode("//label/text()").InnerText,
+                        Value = lineNode.SelectSingleNode("//span/text()").InnerText
+                    });
                 }
-                else
+                catch
                 {
-                    entities = GetRowEntities(row);
-                    list.AddRange(entities);
+                    continue;
                 }
+
             }
 
-            return list;
+            return entities;
         }
 
         private IEnumerable<HtmlNode> GetUnits(HtmlNode node)
@@ -91,12 +93,11 @@ namespace DanishRegisterOfMotorVehicles.Api.Scraper
 
         private IEnumerable<Entity> GetFirstRowEntities(HtmlNode row)
         {
-
             var line = GetLine(row);
 
             var units = GetUnits(line).ToList();
 
-            var unitsSpecial = 
+            var unitsSpecial =
                 GetUnits(line.ChildNodes.First(x => x.Name == "div")).ToList();
 
             if (units == null || units.Count() != 2)
@@ -105,30 +106,30 @@ namespace DanishRegisterOfMotorVehicles.Api.Scraper
             if (unitsSpecial == null || unitsSpecial.Count() != 2)
                 throw new Exception("Found an unexpected number of special units. Expected 2 saw " + units.Count());
 
-            HtmlNode unitA = units.First();
-            HtmlNode unitB = units.Last(); 
+            var unitA = units.First();
+            var unitB = units.Last();
 
-            HtmlNode unitSpecialA = unitsSpecial.First();
-            HtmlNode unitSpecialB = unitsSpecial.Last();
+            var unitSpecialA = unitsSpecial.First();
+            var unitSpecialB = unitsSpecial.Last();
 
-            string categoryA = GetCategory(unitSpecialA);
-            string categoryB = GetCategory(unitSpecialB);
+            var categoryA = GetCategory(unitSpecialA);
+            var categoryB = GetCategory(unitSpecialB);
 
             // result
-            List<Entity> result = new List<Entity>();
+            var result = new List<Entity>();
 
             var divsA =
                 unitSpecialA.ChildNodes
-                .First(x => x.GetAttributeValue("class", "") == "bluebox").ChildNodes
-                .Where(y => y.GetAttributeValue("class", "") == "notrequired keyvalue singleDouble");
+                    .First(x => x.GetAttributeValue("class", "") == "bluebox").ChildNodes
+                    .Where(y => y.GetAttributeValue("class", "") == "notrequired keyvalue singleDouble");
 
-            foreach (HtmlNode divA in divsA)
+            foreach (var divA in divsA)
             {
                 var model = GetModelFromSpecialUnits(divA, categoryA);
                 result.Add(model);
             }
 
-            foreach (var lineA in GetLines(unitA)) 
+            foreach (var lineA in GetLines(unitA))
             {
                 var innerUnitsAA = GetUnits(lineA).ToList();
                 var modelAA = GetModelFromInnerUnits(innerUnitsAA, categoryA);
@@ -137,10 +138,10 @@ namespace DanishRegisterOfMotorVehicles.Api.Scraper
 
             IEnumerable<HtmlNode> divsB =
                 unitSpecialB.ChildNodes
-                .First(x => x.GetAttributeValue("class", "") == "bluebox").ChildNodes
-                .Where(y => y.GetAttributeValue("class", "") == "notrequired keyvalue singleDouble")
-                .ToList();
-            
+                    .First(x => x.GetAttributeValue("class", "") == "bluebox").ChildNodes
+                    .Where(y => y.GetAttributeValue("class", "") == "notrequired keyvalue singleDouble")
+                    .ToList();
+
             foreach (var divB in divsB)
             {
                 var model = GetModelFromSpecialUnits(divB, categoryB);
@@ -157,62 +158,13 @@ namespace DanishRegisterOfMotorVehicles.Api.Scraper
             return result;
         }
 
-        private List<Entity> GetRowEntities(HtmlNode row)
-        {
-            // result
-            var result = new List<Entity>();
-
-            var category = GetCategory(row);
-
-            // here we loop throgh 1 or 2 units
-            foreach (var unit in GetUnits(GetLine(row)))
-            {
-                var lines = GetLines(unit);
-                foreach (var line in lines)
-                {
-                    // key (label) / value er også .unit 
-                    var units = GetUnits(line);
-                    var model = GetModelFromInnerUnits(units, category);
-                    result.Add(model);
-                }
-            }
-            return result;
-        }
-
-        private IEnumerable<HtmlNode> GetAllHvrContainers(HtmlNode node)
-        {
-            return node.ChildNodes
-                .First(x => x.GetAttributeValue("class", "") == "bluebox").ChildNodes
-                .Where(y => y.GetAttributeValue("class", "") == "notrequired keyvalue singleDouble")
-                .ToList(); 
-        }
-
         private Entity GetModelFromInnerUnits(IEnumerable<HtmlNode> innerUnits, string category = "")
         {
             var label = GetPrettyString(innerUnits.First().InnerText);
             var slug = GetSlug(label);
             var path = GetSlug(category) + "/" + slug;
             var value = innerUnits.Last().SelectSingleNode("span").InnerText;
-            var model = new Entity()
-            {
-                Path = path,
-                Category = category,
-                Slug = slug,
-                Label = label,
-                Value = value
-            };
-            return model;        
-        }
-
-        private Entity GetModelFromSpecialUnits(HtmlNode innerUnits, string category = "")
-        {
-            var divsBTrimmed = innerUnits.ChildNodes.Where(da => da.Name == "span");
-
-            var label = GetPrettyString(divsBTrimmed.First().InnerText);
-            var slug = GetSlug(label);
-            var value = GetPrettyString(divsBTrimmed.Last().InnerText);
-            var path = GetSlug(category) + "/" + slug;
-            var model = new Entity()
+            var model = new Entity
             {
                 Path = path,
                 Category = category,
@@ -223,18 +175,33 @@ namespace DanishRegisterOfMotorVehicles.Api.Scraper
             return model;
         }
 
-        private char[] _trim = "\r\n\t:;,. ".ToCharArray();
-        private char[] _replaceWithEmpty = ":;,. ()".ToCharArray();
-        private char[] _replaceWithDash = "/\\ ".ToCharArray();
+        private Entity GetModelFromSpecialUnits(HtmlNode innerUnits, string category = "")
+        {
+            var divsBTrimmed = innerUnits.ChildNodes.Where(da => da.Name == "span");
+
+            var label = GetPrettyString(divsBTrimmed.First().InnerText);
+            var slug = GetSlug(label);
+            var value = GetPrettyString(divsBTrimmed.Last().InnerText);
+            var path = GetSlug(category) + "/" + slug;
+            var model = new Entity
+            {
+                Path = path,
+                Category = category,
+                Slug = slug,
+                Label = label,
+                Value = value
+            };
+            return model;
+        }
 
         private string GetSlug(string s)
         {
-            
-            string result = GetPrettyString(s);
+            var result = GetPrettyString(s);
             result = result.Replace("æ", "ae");
             result = result.Replace("ø", "oe");
             result = result.Replace("å", "aa");
-            result = Encoding.ASCII.GetString(CodePagesEncodingProvider.Instance.GetEncoding("Cyrillic").GetBytes(result));
+            result = Encoding.ASCII.GetString(CodePagesEncodingProvider.Instance.GetEncoding("Cyrillic")
+                .GetBytes(result));
 
             foreach (var c in _replaceWithEmpty)
                 result = result.Replace(c.ToString(), string.Empty);
@@ -245,9 +212,8 @@ namespace DanishRegisterOfMotorVehicles.Api.Scraper
 
         private string GetPrettyString(string s)
         {
-            string result = s.Trim(_trim);
+            var result = s.Trim(_trim);
             return result.Replace("&shy;", " ");
         }
-
     }
 }

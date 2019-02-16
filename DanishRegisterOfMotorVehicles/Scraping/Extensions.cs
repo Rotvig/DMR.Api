@@ -1,6 +1,6 @@
 ﻿using Newtonsoft.Json;
 
-namespace DanishRegisterOfMotorVehicles.Api.Scraper
+namespace DanishRegisterOfMotorVehicles.Api.Scraping
 {
     public static class RequestExtensions
     {

@@ -1,15 +1,14 @@
 ﻿using System.Collections.Generic;
 
-namespace DanishRegisterOfMotorVehicles.Api.Scraper
+namespace DanishRegisterOfMotorVehicles.Api.Scraping
 {
     public class Request
     {
         public bool Success { get; set; }
-        public int Count { get { return Result == null ? 0 : Result.Count; } }
+        public int Count => Result == null ? 0 : Result.Count;
         public string Token { get; set; }
-        public string Message { get; set; } 
+        public string Message { get; set; }
         public List<Entity> Result { get; set; }
-        
     }
 
     public class Entity
@@ -20,5 +19,4 @@ namespace DanishRegisterOfMotorVehicles.Api.Scraper
         public string Label { get; set; }
         public string Value { get; set; }
     }
-
 }
