@@ -57,11 +57,11 @@ namespace DanishRegisterOfMotorVehicles.Api.Scraping
 
         public async Task<Request> LookupVehicle(string licencePlate)
         {
-            var result = _parser.ParseHtmlDocToVehicle(GetVehicleHtml(licencePlate));
-//            var foo = _parser.ParseHtmlDocToVehicle(await GetSubPageHtml());
+            var entities = _parser.ParseHtmlDocToVehicle(GetVehicleHtml(licencePlate));
+            entities.AddRange(_parser.ParseHtmlDocToVehicle(await GetSubPageHtml()));
             var message = "OK";
             var success = true;
-            if (result == null)
+            if (entities == null)
             {
                 message = "Ingen køretøjer fundet";
                 success = false;
@@ -72,8 +72,15 @@ namespace DanishRegisterOfMotorVehicles.Api.Scraping
                 Token = _token,
                 Success = success,
                 Message = message,
-                Result = result
+                Result = entities
             };
+        }
+
+        public async Task<System.Collections.Generic.List<Entity>> LookupVehicle(string licencePlate, bool AsList)
+        {
+            var entities = _parser.ParseHtmlDocToVehicle(GetVehicleHtml(licencePlate));
+            entities.AddRange(_parser.ParseHtmlDocToVehicle(await GetSubPageHtml()));
+            return entities;
         }
     }
 }
