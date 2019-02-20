@@ -11,7 +11,7 @@ namespace DanishRegisterOfMotorVehicles.Api.Scraping
 
         public void Add(EntityContainer entityContainer)
         {
-            if (_entityCache.Count >= MaxChacheSize)
+            if (_entityCache.Count > MaxChacheSize)
             {
                 _entityCache.Remove(_entityCache.OrderBy(x => x.Value.Age).First().Key);
             }
