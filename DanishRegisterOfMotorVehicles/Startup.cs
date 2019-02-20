@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Builder;
+﻿using DanishRegisterOfMotorVehicles.Api.Scraping;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
@@ -25,6 +26,8 @@ namespace DanishRegisterOfMotorVehicles.Api
             {
                 c.SwaggerDoc("v1", new Info { Title = "Danish Register Of Motor Vehicles API", Version = "v1" });
             });
+            
+            services.AddSingleton<ICache, Cache>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

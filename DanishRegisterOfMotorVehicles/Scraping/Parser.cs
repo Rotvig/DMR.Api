@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using HtmlAgilityPack;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 
 namespace DanishRegisterOfMotorVehicles.Api.Scraping
 {
@@ -37,31 +38,33 @@ namespace DanishRegisterOfMotorVehicles.Api.Scraping
 
             foreach(var vehicleNode in vehicleNodes)
             {
-                var value = vehicleNode.Descendants().SingleOrDefault(x => x.Attributes["class"]?.Value == "key")?.InnerText;
-                var key = vehicleNode.Descendants().SingleOrDefault(x => x.Attributes["class"]?.Value == "value")?.InnerText;
+                var fieldName = vehicleNode.Descendants().SingleOrDefault(x => x.Attributes["class"]?.Value == "key")?.InnerText;
+                var value = vehicleNode.Descendants().SingleOrDefault(x => x.Attributes["class"]?.Value == "value")?.InnerText;
 
-                if (string.IsNullOrEmpty(key) || string.IsNullOrEmpty(value))
+                if (string.IsNullOrEmpty(fieldName) || string.IsNullOrEmpty(value))
                     continue;
 
                 entities.Add(new Entity()
                 {
-                    Key = DecodeValue(key),
-                    Value = DecodeValue(value)
+                    FieldName = DecodeValue(fieldName),
+                    Value = DecodeValue(value),
+                    Slug = GetSlug(fieldName)
                 });
             }
 
             foreach (var lineNode in lineNodes)
             {
-                var value =lineNode.Descendants("label")?.FirstOrDefault()?.InnerText;
-                var key = lineNode.Descendants("span")?.FirstOrDefault()?.InnerText;
+                var fieldName =lineNode.Descendants("label")?.FirstOrDefault()?.InnerText;
+                var value = lineNode.Descendants("span")?.FirstOrDefault()?.InnerText;
 
-                if(string.IsNullOrEmpty(key) || string.IsNullOrEmpty(value))
+                if(string.IsNullOrEmpty(fieldName) || string.IsNullOrEmpty(value))
                     continue;
 
                 entities.Add(new Entity()
                 {
-                    Key = DecodeValue(value),
-                    Value = DecodeValue(key)
+                    FieldName = DecodeValue(fieldName),
+                    Value = DecodeValue(value),
+                    Slug = GetSlug(fieldName)
                 });
             }
 
@@ -71,17 +74,24 @@ namespace DanishRegisterOfMotorVehicles.Api.Scraping
         private string DecodeValue(string s)
         {
             var result = GetPrettyString(s);
-            //result = result.Replace("æ", "ae");
-            //result = result.Replace("ø", "oe");
-            //result = result.Replace("å", "aa");
-            //result = Encoding.ASCII.GetString(CodePagesEncodingProvider.Instance.GetEncoding("Cyrillic")
-            //    .GetBytes(result));
+            result = result.Replace(":", "");
+            return result.ToLower().Trim(_trim);
+        }
+        
+        private string GetSlug(string s)
+        {
+            var result = GetPrettyString(s);
+            result = result.Replace("æ", "ae");
+            result = result.Replace("ø", "oe");
+            result = result.Replace("å", "aa");
+            result = Encoding.ASCII.GetString(CodePagesEncodingProvider.Instance.GetEncoding("Cyrillic")
+                .GetBytes(result));
             result = result.Replace(":", "");
 
-            //foreach (var c in _replaceWithEmpty)
-            //    result = result.Replace(c.ToString(), "_");
-            //foreach (var c in _replaceWithDash)
-            //    result = result.Replace(c.ToString(), "-");
+            foreach (var c in _replaceWithEmpty)
+                result = result.Replace(c.ToString(), "_");
+            foreach (var c in _replaceWithDash)
+                result = result.Replace(c.ToString(), "-");
             return result.ToLower().Trim(_trim);
         }
 

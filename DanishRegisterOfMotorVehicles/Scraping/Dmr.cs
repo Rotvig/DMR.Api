@@ -55,32 +55,17 @@ namespace DanishRegisterOfMotorVehicles.Api.Scraping
             return await new StreamReader(stream).ReadToEndAsync();
         }
 
-        public async Task<Request> LookupVehicle(string licencePlate)
+        public async Task<EntityContainer> LookupVehicle(string licencePlate)
         {
             var entities = _parser.ParseHtmlDocToVehicle(GetVehicleHtml(licencePlate));
             entities.AddRange(_parser.ParseHtmlDocToVehicle(await GetSubPageHtml()));
-            var message = "OK";
-            var success = true;
-            if (entities == null)
+            
+            return new EntityContainer()
             {
-                message = "Ingen køretøjer fundet";
-                success = false;
-            }
-
-            return new Request
-            {
-                Token = _token,
-                Success = success,
-                Message = message,
-                Result = entities
+                LiscensePlate = licencePlate,
+                Entities = entities,
+                Age = DateTime.Now
             };
-        }
-
-        public async Task<System.Collections.Generic.List<Entity>> LookupVehicle(string licencePlate, bool AsList)
-        {
-            var entities = _parser.ParseHtmlDocToVehicle(GetVehicleHtml(licencePlate));
-            entities.AddRange(_parser.ParseHtmlDocToVehicle(await GetSubPageHtml()));
-            return entities;
         }
     }
 }
